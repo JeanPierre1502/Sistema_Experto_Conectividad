@@ -1,0 +1,51 @@
+[
+  {
+    "conexion": true,
+    "dns": true,
+    "gateway": true,
+    "puertos_http": true,
+    "puertos_https": true,
+    "latencia_ms": 70.68792978922527,
+    "perdida_pct": 0.0,
+    "severidad": "baja",
+    "diagnostico": "Fallo no identificado: requiere diagnóstico avanzado.",
+    "timestamp": "2025-11-10T06:09:12.772904Z"
+  },
+  {
+    "conexion": true,
+    "dns": true,
+    "gateway": true,
+    "puertos_http": true,
+    "puertos_https": true,
+    "latencia_ms": 57.22681681315104,
+    "perdida_pct": 0.0,
+    "severidad": "baja",
+    "diagnostico": "Fallo no identificado: requiere diagnóstico avanzado.",
+    "timestamp": "2025-11-10T06:14:59.130540Z"
+  },
+  {
+    "conexion": true,
+    "dns": true,
+    "gateway": false,
+    "puertos_http": true,
+    "puertos_https": true,
+    "latencia_ms": 64.26286697387695,
+    "perdida_pct": 0.0,
+    "severidad": "baja",
+    "diagnostico": "Fallo no identificado: requiere diagnóstico avanzado.",
+    "timestamp": "2025-11-10T06:15:24.133692Z"
+  },
+  {
+    "conexion": true,
+    "dns": true,
+    "gateway": true,
+    "puertos_http": true,
+    "puertos_https": true,
+    "latencia_ms": 67.01183319091797,
+    "perdida_pct": 0.0,
+    "severidad": "baja",
+    "diagnostico": "Fallo no identificado: requiere diagnóstico avanzado.",
+    "solucion_aplicada": null,
+    "timestamp": "2025-11-10T06:33:18.650919Z"
+  }
+]
