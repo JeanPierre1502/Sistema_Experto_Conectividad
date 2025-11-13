@@ -11,14 +11,8 @@ Estructura, instalación y uso:
    python -m pip install -r requirements.txt
 
 3. Ejecutar:
-   python ui/cli.py
-   # o
-   python ui/cli.py --auto
+   Consola:
+   python -m sistema_experto_conectividad.ui.cli
 
-Arquitectura:
-- base_de_conocimiento/: reglas y casos históricos.
-- motor_inferencia/: pruebas de red, fuzzificación y motor de inferencia.
-- storage/: historial JSON (aprendizaje).
-- ui/: interfaz CLI.
-
-El proyecto implementa fuzzificación (motor_inferencia/fuzzificacion.py), reglas simbólicas (base_de_conocimiento/reglas.py) y un motor que combina ambos (motor_inferencia/engine.py).
+   Interfaz gráfica:
+   python -m sistema_experto_conectividad.ui.gui
