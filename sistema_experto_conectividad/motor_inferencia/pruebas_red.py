@@ -22,8 +22,6 @@ def detectar_gateway_sistema() -> str:
     Retorna una IP string o None si falla.
     """
 
-
-    # 2) ip route (Linux / macOS)
     try:
         out = subprocess.check_output(["ip", "route"], stderr=subprocess.DEVNULL, universal_newlines=True, timeout=2)
         m = re.search(r'default via (\d+\.\d+\.\d+\.\d+)', out)
@@ -32,7 +30,6 @@ def detectar_gateway_sistema() -> str:
     except Exception:
         pass
 
-    # 3) Windows: ipconfig (buscar Default Gateway / Puerta predeterminada)
     if sys.platform.startswith("win"):
         try:
             out = subprocess.check_output(["ipconfig"], universal_newlines=True, stderr=subprocess.DEVNULL, timeout=2)
@@ -58,7 +55,6 @@ def detectar_gateway_sistema() -> str:
         except Exception:
             pass
 
-        # Try 'route print' - sometimes shows in IPv4 Route Table
         try:
             out = subprocess.check_output(["route", "print"], universal_newlines=True, stderr=subprocess.DEVNULL, timeout=2)
             m = re.search(r'\s0\.0\.0\.0\s+0\.0\.0\.0\s+(\d+\.\d+\.\d+\.\d+)', out)
@@ -67,7 +63,6 @@ def detectar_gateway_sistema() -> str:
         except Exception:
             pass
 
-    # 4) Fallback heurístico: tomar IP local y cambiar último octeto por 1
     try:
         local_ip = socket.gethostbyname(socket.gethostname())
         if local_ip and re.match(r'\d+\.\d+\.\d+\.\d+', local_ip):
