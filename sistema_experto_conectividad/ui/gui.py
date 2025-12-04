@@ -6,6 +6,16 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 import json
 import os
+import logging
+import traceback
+import sys
+
+# Configuración básica de logging para mostrar INFO/DEBUG en consola
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 # Importaciones del sistema
 from sistema_experto_conectividad.motor_inferencia import engine
@@ -43,7 +53,12 @@ class ModernApp(tk.Tk):
         self._last_diagnosis = None
         self._animation_running = False
         self._search_var = tk.StringVar()
-        self._search_var.trace('w', self._filter_history)
+        # Usar trace_add en lugar de trace (deprecated en Tcl 9)
+        try:
+            self._search_var.trace_add('write', lambda *a: self._filter_history())
+        except Exception:
+            # Fallback por compatibilidad
+            self._search_var.trace('w', self._filter_history)
         
         # Configurar tema oscuro
         self._setup_dark_theme()
@@ -188,13 +203,6 @@ class ModernApp(tk.Tk):
             text="🔧 Sistema Experto de Conectividad",
             style='Title.TLabel'
         ).pack(anchor='w')
-        
-        # Subtítulo
-        ttk.Label(
-            header_content,
-            text="Diagnóstico automático · Análisis inteligente · Soluciones basadas en IA",
-            style='Subtitle.TLabel'
-        ).pack(anchor='w', pady=(5, 0))
         
     def _build_control_panel(self, parent):
         """Construye el panel de control superior"""
@@ -768,6 +776,7 @@ class ModernApp(tk.Tk):
         
         # Deshabilitar botón
         self.btn_run.config(state='disabled')
+        logging.info("Iniciando diagnóstico (gateway=%s, auto=%s)", gw, auto)
         
         # Mostrar animación
         self._show_loading()
@@ -788,7 +797,17 @@ class ModernApp(tk.Tk):
                 auto_detect_gateway=auto
             )
             self._last_diagnosis = datos
-            self.after(0, lambda: self._show_diagnosis(datos))
+            logging.info("Diagnóstico recibido, preparando mostrar resultados")
+            def _safe_show():
+                try:
+                    self._show_diagnosis(datos)
+                except Exception as e:
+                    logging.exception("Error mostrando diagnóstico: %s", e)
+                    traceback.print_exc()
+                    messagebox.showerror("Error al mostrar resultados",
+                        f"Ocurrió un error mostrando los resultados:\n{e}\nRevisa la consola para más detalles.")
+
+            self.after(0, _safe_show)
         except Exception as e:
             self.after(0, lambda: self._show_error(e))
         finally:
@@ -797,6 +816,17 @@ class ModernApp(tk.Tk):
             
     def _show_diagnosis(self, datos):
         """Muestra los resultados del diagnóstico"""
+        # Seguridad: si no hay datos, informar al usuario
+        if not datos:
+            messagebox.showwarning("Advertencia", "El diagnóstico no devolvió resultados.")
+            return
+
+        # Loggear el contenido de los datos para depuración
+        try:
+            # Mostrar el JSON resumido en la consola para depuración
+            logging.info("Datos del diagnóstico: %s", json.dumps(datos, ensure_ascii=False))
+        except Exception:
+            logging.exception("No se pudo serializar datos del diagnóstico")
         # === RESUMEN ===
         resumen = (
             f"🔍 Diagnóstico: {datos.get('diagnostico', 'N/A')}\n"
@@ -886,6 +916,13 @@ class ModernApp(tk.Tk):
         # === ACTUALIZAR HISTORIAL ===
         self._refresh_history()
         
+        # Abrir automáticamente el reporte JSON completo para depuración
+        try:
+            logging.info("Abriendo reporte JSON completo (ventana automática) para inspección")
+            self._on_view_report()
+        except Exception:
+            logging.exception("No se pudo abrir el reporte automático")
+
         # Notificación
         self._show_notification("✓ Diagnóstico completado con éxito")
         
@@ -992,18 +1029,22 @@ class ModernApp(tk.Tk):
                 timestamp = item.get('timestamp', 'N/A')[:19]
                 diagnostico = item.get('diagnostico', 'Sin diagnóstico')
                 severidad = item.get('severidad', 'N/A')
-                
+
                 # Formatear entrada
                 entry = f"[{timestamp}] {severidad} | {diagnostico[:60]}..."
                 self.list_hist.insert('end', entry)
-                
-                # Color según severidad
-                if 'crítico' in severidad.lower():
-                    self.list_hist.itemconfig('end', fg=COLORS['error'])
-                elif 'moderado' in severidad.lower():
-                    self.list_hist.itemconfig('end', fg=COLORS['warning'])
-                else:
-                    self.list_hist.itemconfig('end', fg=COLORS['success'])
+
+                # Color según severidad (usar índice correcto)
+                try:
+                    idx = self.list_hist.size() - 1
+                    if 'crítico' in severidad.lower():
+                        self.list_hist.itemconfig(idx, fg=COLORS['error'])
+                    elif 'moderado' in severidad.lower():
+                        self.list_hist.itemconfig(idx, fg=COLORS['warning'])
+                    else:
+                        self.list_hist.itemconfig(idx, fg=COLORS['success'])
+                except Exception:
+                    logging.exception("No se pudo aplicar color al historial")
                     
         except Exception as e:
             print(f"Error cargando historial: {e}")
@@ -1027,21 +1068,24 @@ class ModernApp(tk.Tk):
                 timestamp = item.get('timestamp', '')
                 diagnostico = item.get('diagnostico', '')
                 severidad = item.get('severidad', '')
-                
+
                 # Buscar en todos los campos
                 if (search_text in timestamp.lower() or 
                     search_text in diagnostico.lower() or 
                     search_text in severidad.lower()):
-                    
+
                     entry = f"[{timestamp[:19]}] {severidad} | {diagnostico[:60]}..."
                     self.list_hist.insert('end', entry)
-                    
-                    if 'crítico' in severidad.lower():
-                        self.list_hist.itemconfig('end', fg=COLORS['error'])
-                    elif 'moderado' in severidad.lower():
-                        self.list_hist.itemconfig('end', fg=COLORS['warning'])
-                    else:
-                        self.list_hist.itemconfig('end', fg=COLORS['success'])
+                    try:
+                        idx = self.list_hist.size() - 1
+                        if 'crítico' in severidad.lower():
+                            self.list_hist.itemconfig(idx, fg=COLORS['error'])
+                        elif 'moderado' in severidad.lower():
+                            self.list_hist.itemconfig(idx, fg=COLORS['warning'])
+                        else:
+                            self.list_hist.itemconfig(idx, fg=COLORS['success'])
+                    except Exception:
+                        logging.exception("No se pudo aplicar color al historial (filtro)")
                         
         except Exception as e:
             print(f"Error filtrando historial: {e}")
@@ -1135,6 +1179,16 @@ class ModernApp(tk.Tk):
         win.title("Reporte JSON Completo")
         win.geometry("900x700")
         win.configure(bg=COLORS['bg_dark'])
+        try:
+            # Asegurar que la ventana aparece encima y recibe foco
+            win.transient(self)
+            win.lift()
+            win.attributes('-topmost', True)
+            win.focus_force()
+            # Remover topmost poco después para no interferir
+            win.after(200, lambda: win.attributes('-topmost', False))
+        except Exception:
+            logging.exception("No se pudo asegurar foco del reporte")
         
         # Header
         header = tk.Frame(win, bg=COLORS['bg_medium'])
