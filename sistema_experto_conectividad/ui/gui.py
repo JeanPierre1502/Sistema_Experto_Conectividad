@@ -1,4 +1,7 @@
 # ui/gui.py
+
+print(">>> CARGANDO GUI DESDE ESTE ARCHIVO <<<")
+
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext, filedialog
 import threading
@@ -9,6 +12,16 @@ import os
 import logging
 import traceback
 import sys
+
+import tkinter
+tkinter.Tk.report_callback_exception = lambda self, exc, val, tb: __import__("traceback").print_exception(exc, val, tb)
+
+def _tk_error_report(self, exc, val, tb):
+    import traceback
+    print("\n\n⚠️ ERROR DE TKINTER DETECTADO ⚠️")
+    traceback.print_exception(exc, val, tb)
+tkinter.Tk.report_callback_exception = _tk_error_report
+
 
 # Configuración básica de logging para mostrar INFO/DEBUG en consola
 logging.basicConfig(
@@ -153,6 +166,11 @@ class ModernApp(tk.Tk):
     # CONSTRUCCIÓN DE INTERFAZ
     # =====================================================
     def _build_ui(self):
+
+        
+        
+        
+
         """Construye toda la interfaz de usuario"""
         
         # Contenedor principal con scroll
@@ -175,14 +193,17 @@ class ModernApp(tk.Tk):
         # Columna izquierda: Diagnóstico y parámetros
         left_frame = self._build_left_column(content)
         left_frame.pack(side='left', fill='both', expand=True, padx=(0, 10))
-        
+        print("LEFT RETURN:", left_frame)
+
         # Columna central: Visualizaciones gráficas
         center_frame = self._build_center_column(content)
         center_frame.pack(side='left', fill='both', expand=True, padx=10)
-        
+        print("CENTER RETURN:", center_frame)
+
         # Columna derecha: Pasos y acciones
         right_frame = self._build_right_column(content)
         right_frame.pack(side='right', fill='both', expand=True, padx=(10, 0))
+        
         
         # ===== HISTORIAL INFERIOR =====
         self._build_history_panel(main_container)
@@ -551,11 +572,20 @@ class ModernApp(tk.Tk):
     # MÉTODOS AUXILIARES DE UI
     # =====================================================
     def _create_card(self, parent):
-        """Crea una tarjeta con estilo"""
+        """Crea una tarjeta (card) y la devuelve. El card se empaca; dentro se coloca un 'inner' para padding."""
+        # Card (padre visible)
         card = tk.Frame(parent, bg=COLORS['bg_medium'])
+        # Empacar el card para que sea visible inmediatamente; los callers pueden seguir usando pack en el return sin problema
+        card.pack(fill='both', expand=True, pady=10)
+
+        # Inner con padding para contener el contenido
         inner = tk.Frame(card, bg=COLORS['bg_medium'])
         inner.pack(fill='both', expand=True, padx=20, pady=15)
-        return inner
+
+        # Devolvemos el card (no el inner). El contenido debe añadirse a `inner`.
+        # Para compatibilidad con el código existente, devolvemos un objeto con .inner attr
+        # pero la forma más simple es devolver el card y que el caller use widgets dentro del card.
+        return card
         
     def _create_legend_item(self, parent, color, text):
         """Crea un elemento de leyenda"""
@@ -620,10 +650,30 @@ class ModernApp(tk.Tk):
         self._animate_loading()
         
     def _hide_loading(self):
-        """Oculta la animación de carga"""
-        self._animation_running = False
-        self.loading_frame.pack_forget()
-        
+        """Oculta completamente el panel de animación y fuerza redibujado."""
+        try:
+            self._animation_running = False
+        except Exception:
+            pass
+
+        # Intentar retirar por ambos gestores por seguridad
+        try:
+            self.loading_frame.pack_forget()
+        except Exception:
+            pass
+
+        try:
+            self.loading_frame.place_forget()
+        except Exception:
+            pass
+
+        # Forzar redibujado/tareas pendientes
+        try:
+            self.update_idletasks()
+            self.update()
+        except Exception:
+            pass
+
     def _animate_loading(self, step=0):
         """Animación de barras de carga"""
         if not self._animation_running:
@@ -917,15 +967,18 @@ class ModernApp(tk.Tk):
         self._refresh_history()
         
         # Abrir automáticamente el reporte JSON completo para depuración
-        try:
-            logging.info("Abriendo reporte JSON completo (ventana automática) para inspección")
-            self._on_view_report()
-        except Exception:
-            logging.exception("No se pudo abrir el reporte automático")
+        logging.info("Diagnóstico listo (reporte JSON disponible manualmente con 'Ver JSON Completo')")
 
         # Notificación
         self._show_notification("✓ Diagnóstico completado con éxito")
-        
+
+        # Forzar redibujado y asegurar que todo esté mapeado
+    try:
+        self.update_idletasks()
+        self.update()
+    except Exception:
+        logging.exception("No se pudo forzar redraw después de mostrar diagnóstico")
+
     def _show_error(self, error):
         """Muestra un error"""
         messagebox.showerror(
